@@ -11,8 +11,11 @@ all: $(BUILD_DIR)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
+# Default main class; override with: make run CLASS=tool.GenerateAST ARGS=lox
+CLASS ?= lox.Lox
+
 run: all
-	java -cp $(BUILD_DIR) lox.Lox $(ARGS)
+	java -cp $(BUILD_DIR) $(CLASS) $(ARGS)
 
 clean:
 	rm -rf $(BUILD_DIR)

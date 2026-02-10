@@ -1,5 +1,6 @@
 package lox;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Parser {
@@ -13,12 +14,58 @@ public class Parser {
         this.tokens = tokens;
     }
 
-    Expr parse() {
+    List<Stmt> parse() {
+        List<Stmt> statements = new ArrayList<>();
+
+        while (!this.isAtEnd()) {
+            statements.add(this.declaration());
+        }
+
+        return statements;
+    }
+
+    private Stmt declaration() {
         try {
-            return expression();
+            if (this.match(TokenType.VAR))
+                return this.varDeclaration();
+
+            return this.statement();
         } catch (ParseError error) {
+            this.synchronize();
             return null;
         }
+    }
+
+    private Stmt varDeclaration() {
+        Token name = this.consume(TokenType.IDENTIFIER, "Expect variable name.");
+
+        Expr initializer = null;
+        if (this.match(TokenType.EQUAL)) {
+            initializer = this.expression();
+        }
+
+        this.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.");
+        return new Stmt.Var(name, initializer);
+    }
+
+    private Stmt statement() {
+        if (this.match(TokenType.PRINT)) {
+            return this.printStatement();
+        }
+
+        return this.expressionStatement();
+    }
+
+    private Stmt printStatement() {
+        Expr value = this.expression();
+        this.consume(TokenType.SEMICOLON, "Expect ';' after value.");
+        return new Stmt.Print(value);
+    }
+
+    private Stmt expressionStatement() {
+        Expr value = this.expression();
+        this.consume(TokenType.SEMICOLON, "Expect ';' after expression.");
+        return new Stmt.Expression(value);
     }
 
     private Expr expression() {
@@ -97,6 +144,8 @@ public class Parser {
             case NUMBER:
             case STRING:
                 return new Expr.Literal(previous().literal);
+            case IDENTIFIER:
+                return new Expr.Variable(this.previous());
             case LEFT_PAREN:
                 Expr expr = this.expression();
                 this.consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.");
@@ -155,9 +204,12 @@ public class Parser {
     }
 
     private void synchronize() {
-        advance();
+        this.advance();
 
-        while (isAtEnd()) {
+        while (!this.isAtEnd()) {
+            if (this.previous().type == TokenType.SEMICOLON)
+                return;
+
             switch (this.peek().type) {
                 case FOR:
                 case WHILE:
@@ -169,10 +221,10 @@ public class Parser {
                 case RETURN:
                     return;
                 default:
-                    // do nothing for non starting token statements
+                    break;
             }
 
-            advance();
+            this.advance();
         }
     }
 }

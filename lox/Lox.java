@@ -67,7 +67,6 @@ public class Lox {
 
         Parser parser = new Parser(tokens);
 
-        System.out.println("before");
         List<Stmt> statements = parser.parse();
 
         // Stop if there was a syntax error.

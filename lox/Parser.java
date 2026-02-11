@@ -53,7 +53,22 @@ public class Parser {
             return this.printStatement();
         }
 
+        if (this.match(TokenType.LEFT_BRACE))
+            return new Stmt.Block(this.blockStatement());
+
         return this.expressionStatement();
+    }
+
+    private List<Stmt> blockStatement() {
+        List<Stmt> statements = new ArrayList<>();
+
+        while (!this.check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
+            statements.add(this.declaration());
+        }
+
+        this.consume(TokenType.RIGHT_BRACE, "Expect '}' after block.");
+
+        return statements;
     }
 
     private Stmt printStatement() {
@@ -69,7 +84,25 @@ public class Parser {
     }
 
     private Expr expression() {
-        return this.equality();
+        return this.assigement();
+    }
+
+    private Expr assigement() {
+        Expr expr = this.equality();
+
+        if (this.match(TokenType.EQUAL)) {
+            Token equals = this.previous();
+            Expr value = this.assigement();
+
+            if (expr instanceof Expr.Variable) {
+                Token name = ((Expr.Variable) expr).name;
+                return new Expr.Assign(name, value);
+            }
+
+            error(equals, "Invalid assignment target.");
+        }
+
+        return expr;
     }
 
     private Expr equality() {
@@ -143,7 +176,7 @@ public class Parser {
                 return new Expr.Literal(null);
             case NUMBER:
             case STRING:
-                return new Expr.Literal(previous().literal);
+                return new Expr.Literal(this.previous().literal);
             case IDENTIFIER:
                 return new Expr.Variable(this.previous());
             case LEFT_PAREN:
